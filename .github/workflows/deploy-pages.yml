@@ -35,15 +35,28 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
-      - name: Install dependencies
+      - name: Check required secrets
+        run: |
+          set -e
+          missing=()
+          [ -n "$VITE_SUPABASE_URL" ] || missing+=("VITE_SUPABASE_URL")
+          [ -n "$VITE_SUPABASE_ANON_KEY" ] || missing+=("VITE_SUPABASE_ANON_KEY")
+          [ -n "$VITE_WEBSOCKET_URL" ] || missing+=("VITE_WEBSOCKET_URL")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required secrets: ${missing[*]}" >&2
+            exit 1
+          fi
+
+      - name: Setup pnpm (corepack)
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate
+
+      - name: Install dependencies (pnpm)
         run: pnpm install --frozen-lockfile
 
-      - name: Build
+      - name: Build (pnpm)
         run: pnpm build
 
       - name: Upload Pages artifact
