@@ -17,12 +17,13 @@ concurrency:
 
 jobs:
   build:
+    environment: github-pages
     runs-on: ubuntu-latest
     env:
       # Inject Vite envs from repository secrets at build time
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VITE_WEBSOCKET_URL: ${{ secrets.VITE_WEBSOCKET_URL }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || vars.VITE_SUPABASE_ANON_KEY }}
+      VITE_WEBSOCKET_URL: ${{ secrets.VITE_WEBSOCKET_URL || vars.VITE_WEBSOCKET_URL }}
       # Ensure production mode
       NODE_ENV: production
     steps:
