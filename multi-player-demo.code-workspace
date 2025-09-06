@@ -1,0 +1,28 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"cSpell.words": [
+			"AABB",
+			"cand",
+			"deepseek",
+			"laya",
+			"nolog",
+			"overscroll",
+			"pathfinding",
+			"shadcn",
+			"Supabase",
+			"Teleporter",
+			"teleporters",
+			"Tilemap",
+			"Tilemaps",
+			"Tileset",
+			"Vercel",
+			"VITE",
+			"WASD"
+		]
+	}
+}
