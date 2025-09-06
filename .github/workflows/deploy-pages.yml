@@ -26,22 +26,35 @@ jobs:
       # Ensure production mode
       NODE_ENV: production
     steps:
-      - name: Checkout
+      - name: 检出仓库代码
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: 设置 Node.js（启用 pnpm 缓存）
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
 
-      - name: Setup pnpm
+      - name: 安装 pnpm（官方 Action）
         uses: pnpm/action-setup@v4
         with:
           version: 9
 
+      - name: 打印环境与版本信息
+        run: |
+          echo "👉 CI 开始：运行 ID=$GITHUB_RUN_ID，提交 SHA=$GITHUB_SHA"
+          echo "👉 分支：$GITHUB_REF  仓库：$GITHUB_REPOSITORY"
+          echo "👉 UTC 时间：$(date -u '+%Y-%m-%d %H:%M:%S')"
+          echo "node=$(node -v)"
+          echo "pnpm=$(pnpm -v)"
 
-      - name: Check required secrets
+      - name: 校验 pnpm 可用性
+        run: |
+          set -e
+          echo "pnpm 可执行路径：$(command -v pnpm)"
+          pnpm -v
+
+      - name: 检查必需的 Secrets
         run: |
           set -e
           missing=()
@@ -49,17 +62,19 @@ jobs:
           [ -n "$VITE_SUPABASE_ANON_KEY" ] || missing+=("VITE_SUPABASE_ANON_KEY")
           [ -n "$VITE_WEBSOCKET_URL" ] || missing+=("VITE_WEBSOCKET_URL")
           if [ ${#missing[@]} -gt 0 ]; then
-            echo "Missing required secrets: ${missing[*]}" >&2
+            echo "❌ 缺少必要的 Secrets：${missing[*]}" >&2
+            echo "请在 仓库 Settings → Secrets and variables → Actions 添加上述变量后重试。" >&2
             exit 1
           fi
+          echo "✅ Secrets 检查通过（值不会在日志中显示）。"
 
-      - name: Install dependencies (pnpm)
+      - name: 安装依赖（pnpm）
         run: pnpm install --frozen-lockfile
 
-      - name: Build (pnpm)
+      - name: 构建（pnpm）
         run: pnpm build
 
-      - name: Upload Pages artifact
+      - name: 上传 Pages 构建产物
         uses: actions/upload-pages-artifact@v3
         with:
           # Vite outDir is configured to 'docs' in vite.config.ts
@@ -72,6 +87,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to GitHub Pages
+      - name: 标记部署开始
+        run: echo "🚀 开始部署到 GitHub Pages，运行 ID=$GITHUB_RUN_ID，提交 SHA=$GITHUB_SHA"
+
+      - name: 部署到 GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
