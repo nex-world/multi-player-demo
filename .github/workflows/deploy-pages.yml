@@ -69,8 +69,8 @@ jobs:
           fi
           echo "✅ Secrets 检查通过（值不会在日志中显示）。"
 
-      - name: 安装依赖（pnpm）
-        run: pnpm install --frozen-lockfile
+      - name: 安装依赖（pnpm，包含 devDependencies）
+        run: pnpm install --frozen-lockfile --prod=false
 
       - name: 构建（pnpm）
         run: pnpm build
