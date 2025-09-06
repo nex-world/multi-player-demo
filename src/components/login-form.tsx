@@ -23,11 +23,11 @@ export function LoginForm({
     setMessage(null)
     setError(null)
     try {
-      // 使用 Hash Router，回跳到 #/ 以保持在首页
-      const redirectTo = `${window.location.origin}/#/`
+      // 不再覆盖重定向地址，改为使用 Supabase 项目中配置的 Site URL
+      // 如果需要自定义，可传入 options.emailRedirectTo
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: redirectTo, shouldCreateUser: true },
+        options: { shouldCreateUser: true },
       })
       if (error) throw error
   setMessage("魔法链接已发送到邮箱，请在该设备浏览器中打开链接完成登录。")

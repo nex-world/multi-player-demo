@@ -36,7 +36,8 @@ function AuthGate(){
         try {
           await supabase.auth.exchangeCodeForSession(window.location.href)
           // Clean URL params after exchange
-          window.history.replaceState({}, document.title, url.origin + url.pathname)
+          // 清理查询参数但保留 hash（兼容 Hash Router）
+          window.history.replaceState({}, document.title, url.origin + url.pathname + url.hash)
         } catch (e) {
           // eslint-disable-next-line no-console
           console.error("Failed to exchange code for session", e)
