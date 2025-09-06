@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { BackBar } from '@/components/BackBar'
 // import { BaseUrlInput } from '@/components/BaseUrlInput'
 import { supabase } from '@/lib/supabase'
+import { maskEmailForDisplay, maskEmailsInText } from '@/lib/mask'
 
 type Player = { id: string, x: number, y: number, name: string, color: string }
 type ChatMsg = { playerId?: string, name?: string, color?: string, text: string, t: number, kind?: 'system' | 'chat' }
@@ -305,7 +306,7 @@ export function ConnectRoom(){
       }
       if (hoverId){
         const p = playersRef.current.get(hoverId)!
-        drawLabel(ctx, p.name, p.x, p.y - 14)
+        drawLabel(ctx, maskEmailForDisplay(p.name), p.x, p.y - 14)
       }
 
       animRef.current = requestAnimationFrame(step)
@@ -385,7 +386,7 @@ export function ConnectRoom(){
       <BackBar />
       <div className="p-4 grid gap-3 md:grid-cols-[1fr_320px]">
         <div className="space-y-3">
-          <div className="text-sm text-muted-foreground">当前用户：{userEmail || '未登录'}</div>
+          <div className="text-sm text-muted-foreground">当前用户：{userEmail ? maskEmailForDisplay(userEmail) : '未登录'}</div>
           {wsEnvError && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm">
               <div className="font-medium mb-1">需要配置 WebSocket 服务地址</div>
@@ -414,7 +415,7 @@ export function ConnectRoom(){
                 players.get('self') ||
                 playersRef.current.get(selfIdRef.current) ||
                 playersRef.current.get('self')
-              const name = selfP?.name || (selfId ? `user-${String(selfId).slice(0,6)}` : '')
+              const name = maskEmailForDisplay(selfP?.name || (selfId ? `user-${String(selfId).slice(0,6)}` : ''))
               return (
                 <span className="inline-flex items-center gap-2">
                   <span className="inline-block h-3 w-3 rounded-full border" style={{ background: selfP?.color || '#888' }} title={name} />
@@ -437,7 +438,7 @@ export function ConnectRoom(){
             {Array.from(players.values()).map(p => (
               <div key={p.id} className="flex items-center gap-2">
                 <span className="inline-block h-3 w-3 rounded-full border" style={{ background: p.color }} />
-                <span>{p.name}</span>
+                <span>{maskEmailForDisplay(p.name)}</span>
                 {p.id === selfId && <span className="text-muted-foreground">(你)</span>}
               </div>
             ))}
@@ -448,12 +449,12 @@ export function ConnectRoom(){
             {messages.map((m,i)=> (
               <div key={i} className="leading-5">
                 {m.kind === 'system' ? (
-                  <div className="text-muted-foreground">[{new Date(m.t).toLocaleTimeString()}] {m.text}</div>
+                  <div className="text-muted-foreground">[{new Date(m.t).toLocaleTimeString()}] {maskEmailsInText(m.text)}</div>
                 ) : (
                   <>
-                    <span className="mr-2" style={{ color: m.color }}>{m.name}</span>
+                    <span className="mr-2" style={{ color: m.color }}>{maskEmailForDisplay(m.name || 'user')}</span>
                     <span className="text-muted-foreground">{new Date(m.t).toLocaleTimeString()}</span>
-                    <div>{m.text}</div>
+                    <div>{maskEmailsInText(m.text || '')}</div>
                   </>
                 )}
               </div>

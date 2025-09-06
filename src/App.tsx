@@ -6,6 +6,7 @@ import { Button } from "@/shadcn/components/ui/button"
 import { Link } from 'react-router'
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js"
 import { useAuthStore } from "@/stores/auth"
+import { maskEmailForDisplay } from "@/lib/mask"
 
 export default function App(){
   return <AuthGate/>
@@ -103,7 +104,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key`}</pre>
 
   return (
     <div className="p-6 space-y-4">
-      <div className="text-sm text-muted-foreground">已登录：{userEmail}</div>
+      <div className="text-sm text-muted-foreground">已登录：{maskEmailForDisplay(userEmail)}</div>
       <div className="flex gap-2">
         <Button
           variant="outline"
