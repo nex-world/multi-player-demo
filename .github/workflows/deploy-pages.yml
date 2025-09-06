@@ -35,6 +35,11 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
 
       - name: Check required secrets
         run: |
@@ -47,11 +52,6 @@ jobs:
             echo "Missing required secrets: ${missing[*]}" >&2
             exit 1
           fi
-
-      - name: Setup pnpm (corepack)
-        run: |
-          corepack enable
-          corepack prepare pnpm@9 --activate
 
       - name: Install dependencies (pnpm)
         run: pnpm install --frozen-lockfile
