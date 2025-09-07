@@ -73,6 +73,17 @@ export function ConnectRoom(){
   }
 
   // load ws base from env and room id (ws must come from env as requirement)
+  // Deduplicate messages by a stable key (t|playerId|text)
+  function dedupMessages(list: ChatMsg[]): ChatMsg[] {
+    const sorted = [...list].sort((a,b)=>a.t-b.t)
+    const map = new Map<string, ChatMsg>()
+    for (const m of sorted) {
+      const key = `${m.t}|${m.playerId ?? ''}|${m.text ?? ''}`
+      map.set(key, m)
+    }
+    return Array.from(map.values())
+  }
+
   useEffect(() => {
     try {
       const envUrl = import.meta.env?.VITE_WEBSOCKET_URL as string | undefined
@@ -94,8 +105,8 @@ export function ConnectRoom(){
       const items = await idbGetRoom(roomId, 200)
       if (cancelled) return
       if (items.length) {
-        // 只设置本地历史，不叠加
-        setMessages(items.map(m => ({ kind: m.kind || 'chat', playerId: m.playerId, name: m.name, color: m.color, text: m.text, t: m.t })))
+        const mapped = items.map(m => ({ kind: m.kind || 'chat', playerId: m.playerId, name: m.name, color: m.color, text: m.text, t: m.t }))
+        setMessages(dedupMessages(mapped))
       } else {
         setMessages([])
       }
@@ -181,17 +192,11 @@ export function ConnectRoom(){
           }
         }
         if (msg.type === 'history') {
-          // 合并并去重历史
+          // 合并并去重历史（允许与本地略有时间差的重复消息聚合）
           const hist: ChatMsg[] = (msg.messages || []).map((it: any) => ({ kind: 'chat', playerId: it.playerId, name: it.name, color: it.color, text: it.text, t: it.t }))
           if (hist.length) {
             idbPutMany(hist.map(h => ({ roomId, ...h }))).catch(()=>{})
-            setMessages((m) => {
-              // 用 t+playerId+text 去重
-              const all = [...m, ...hist]
-              const dedup = Array.from(new Map(all.map(x => [`${x.t}-${x.playerId}-${x.text}`, x])).values())
-              dedup.sort((a,b)=>a.t-b.t)
-              return dedup.slice(-200)
-            })
+            setMessages((m) => dedupMessages([...m, ...hist]).slice(-200))
           }
         }
         if (msg.type === 'chat') {
@@ -234,11 +239,7 @@ export function ConnectRoom(){
     if (!text) return
     ws.send(JSON.stringify({ type:'say', text }))
     setChat('')
-    // optimistic local persist for offline continuity
-    const t = Date.now()
-    const selfP = playersRef.current.get(selfIdRef.current || 'self')
-    const item: ChatItem = { roomId, kind:'chat', playerId: selfIdRef.current || 'self', name: selfP?.name, color: selfP?.color, text, t }
-    idbPutMany([item]).catch(()=>{})
+    // 不做乐观落地，等待服务器回传 chat 再写入，避免时间戳不一致导致的重复
   }
 
   function leaveRoom(){
