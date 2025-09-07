@@ -20,6 +20,9 @@ type SupabaseLike = {
     signInWithOtp: (
       options: any
     ) => Promise<{ data?: any; error?: Error | null }>
+    updateUser: (
+      attributes: any
+    ) => Promise<{ data?: any; error?: Error | null }>
   }
 }
 
@@ -56,6 +59,9 @@ if (isSupabaseConfigured) {
         // no-op
       },
       async signInWithOtp() {
+        return { error: notConfigured() }
+      },
+      async updateUser() {
         return { error: notConfigured() }
       },
     },

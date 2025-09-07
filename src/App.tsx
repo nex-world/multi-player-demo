@@ -1,9 +1,7 @@
-import Hello from "@/components/Hello"
 import { useEffect, useState } from "react"
 import { supabase, isSupabaseConfigured, supabaseConfigMessage } from "@/lib/supabase"
-import { LoginForm } from "@/components/login-form"
 import { Button } from "@/shadcn/components/ui/button"
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js"
 import { useAuthStore } from "@/stores/auth"
 import { maskEmailForDisplay } from "@/lib/mask"
@@ -16,6 +14,7 @@ function AuthGate(){
   const [loading, setLoading] = useState(true)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const { setAuth } = useAuthStore()
+  const navigate = useNavigate()
 
   useEffect(() => {
     let mounted = true
@@ -39,6 +38,8 @@ function AuthGate(){
           // Clean URL params after exchange
           // 清理查询参数但保留 hash（兼容 Hash Router）
           window.history.replaceState({}, document.title, url.origin + url.pathname + url.hash)
+          // Redirect into onboarding
+          navigate('/start', { replace: true })
         } catch (e) {
           // eslint-disable-next-line no-console
           console.error("Failed to exchange code for session", e)
@@ -94,34 +95,38 @@ VITE_SUPABASE_ANON_KEY=your-anon-key`}</pre>
     )
   }
 
-  if (!userEmail) {
-    return (
-      <div className="mx-auto max-w-sm p-6">
-        <LoginForm />
-      </div>
-    )
-  }
-
   return (
-    <div className="p-6 space-y-4">
-      <div className="text-sm text-muted-foreground">已登录：{maskEmailForDisplay(userEmail)}</div>
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          onClick={() => {
-            supabase.auth.signOut()
-          }}
-        >
-          退出登录
-        </Button>
-        <Button asChild>
-          <Link to="/room">进入房间</Link>
-        </Button>
-        {/* <Button asChild variant="secondary">
-          <Link to="/dev">开发者面板</Link>
-        </Button> */}
+    <div className="mx-auto max-w-2xl p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">多人游戏 Demo</h1>
+        <p className="text-muted-foreground">欢迎！请先登录或注册，然后前往开始页面设置资料并加入房间。</p>
       </div>
-      <Hello />
+      {!userEmail ? (
+        <div className="flex items-center gap-3">
+          <Button asChild>
+            <Link to="/auth/login">登录</Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link to="/auth/sign-up">注册</Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="text-sm text-muted-foreground">已登录：{maskEmailForDisplay(userEmail)}</div>
+          <div className="flex items-center gap-3">
+            <Button asChild>
+              <Link to="/start">进入开始页面</Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link to="/connect-room">直接加入房间</Link>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => { supabase.auth.signOut() }}
+            >退出登录</Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

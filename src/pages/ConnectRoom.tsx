@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { BackBar } from '@/components/BackBar'
 // import { BaseUrlInput } from '@/components/BaseUrlInput'
 import { supabase } from '@/lib/supabase'
+import { idbGetRoom, idbPutMany, type ChatItem } from '@/lib/idb-chat'
 import { maskEmailForDisplay, maskEmailsInText } from '@/lib/mask'
 
 type Player = { id: string, x: number, y: number, name: string, color: string }
@@ -85,6 +86,21 @@ export function ConnectRoom(){
     } catch {}
   }, [])
 
+  // load local history when roomId changes (offline available)
+  useEffect(() => {
+    let cancelled = false
+    async function loadLocal() {
+      if (!roomId) return
+      const items = await idbGetRoom(roomId, 200)
+      if (cancelled) return
+      if (items.length) {
+        setMessages(items.map(m => ({ kind: m.kind || 'chat', playerId: m.playerId, name: m.name, color: m.color, text: m.text, t: m.t })))
+      }
+    }
+    loadLocal()
+    return () => { cancelled = true }
+  }, [roomId])
+
   // restore auth on refresh (direct landing on /room)
   useEffect(() => {
     let cancelled = false
@@ -161,8 +177,24 @@ export function ConnectRoom(){
             targetsRef.current = next
           }
         }
+        if (msg.type === 'history') {
+          // merge server history and persist to idb
+          const hist: ChatItem[] = (msg.messages || []).map((it: any) => ({ roomId, kind: 'chat', playerId: it.playerId, name: it.name, color: it.color, text: it.text, t: it.t }))
+          if (hist.length) {
+            idbPutMany(hist).catch(()=>{})
+            setMessages((m) => {
+              const mapped: ChatMsg[] = hist.map(h => ({ kind: 'chat', playerId: h.playerId, name: h.name, color: h.color, text: h.text, t: h.t }))
+              const merged: ChatMsg[] = [...m, ...mapped]
+              merged.sort((a,b)=>a.t-b.t)
+              return merged.slice(-200)
+            })
+          }
+        }
         if (msg.type === 'chat') {
-          setMessages((m) => [...m.slice(-199), { kind: 'chat', playerId: msg.playerId, name: msg.name ?? 'user', color: msg.color ?? '#999', text: msg.text ?? '', t: msg.t ?? Date.now() }])
+          const item: ChatItem = { roomId, kind: 'chat', playerId: msg.playerId, name: msg.name ?? 'user', color: msg.color ?? '#999', text: msg.text ?? '', t: msg.t ?? Date.now() }
+          idbPutMany([item]).catch(()=>{})
+          const cm: ChatMsg = { kind: 'chat', playerId: item.playerId, name: item.name, color: item.color, text: item.text, t: item.t }
+          setMessages((m) => [...m.slice(-199), cm])
         }
         if (msg.type === 'join') {
           upsertPlayer({ id: msg.playerId, x: playersRef.current.get(msg.playerId)?.x ?? 400, y: playersRef.current.get(msg.playerId)?.y ?? 300, name: msg.name ?? `user-${String(msg.playerId).slice(0,6)}`, color: msg.color ?? '#999' })
@@ -198,6 +230,11 @@ export function ConnectRoom(){
     if (!text) return
     ws.send(JSON.stringify({ type:'say', text }))
     setChat('')
+    // optimistic local persist for offline continuity
+    const t = Date.now()
+    const selfP = playersRef.current.get(selfIdRef.current || 'self')
+    const item: ChatItem = { roomId, kind:'chat', playerId: selfIdRef.current || 'self', name: selfP?.name, color: selfP?.color, text, t }
+    idbPutMany([item]).catch(()=>{})
   }
 
   function leaveRoom(){

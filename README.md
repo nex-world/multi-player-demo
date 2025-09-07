@@ -1,25 +1,48 @@
-多人游戏最小化 demo（前端）
+# Frontend Demo (Supabase Auth)
 
-## 快速开始
+本 demo 集成了 Supabase 登录（邮箱魔法链接 + Google/Apple OAuth），并用 shadcn/ui 渲染登录表单。
 
-1. 安装依赖并启动开发服务器
+## 前置要求
+- Node 18+
+- pnpm 9+
+- 已在 Supabase 控制台创建项目，拿到 Project URL 与 anon key
+- OAuth（可选）：在 Supabase -> Authentication -> Providers 中启用 Google/Apple，并将回调 URL 配置为：
+  - 本地开发：`http://localhost:5173`
 
-	- 使用 pnpm：`pnpm i && pnpm dev`
-	- 或 npm：`npm i && npm run dev`
+## 安装依赖
+请在仓库根目录执行以下命令（不要在助理中执行）：
 
-2. 配置环境变量（必需）
+```bash
+# 切到前端 demo 包
+cd frontend-apps/demo
 
-	将 `.env.example` 复制为 `.env.local` 并填写：
+# 安装依赖（新增了 @supabase/supabase-js）
+pnpm add @supabase/supabase-js
+```
 
-	- VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY：用于登录/鉴权。
-	- VITE_WEBSOCKET_URL：多人房间的 WebSocket 服务地址（例如 wss://your-host/ws 或 ws://localhost:8787）。
+## 环境变量
+复制示例文件，然后填入 Supabase 项目配置：
 
-	缺失时的行为：
-	- 未配置 Supabase：首页会显示清晰的引导，而不会抛错。
-	- 未配置 WebSocket：房间页会提示需要配置 VITE_WEBSOCKET_URL 且“连接”按钮不可用。
+```bash
+cp .env.example .env.local
+```
 
-## 路由
+编辑 `.env.local`：
 
-- `#/` 登录页 + 欢迎页
-- `#/room` 房间演示页
-- `#/auth/error` 登录错误页
+```
+VITE_SUPABASE_URL=https://YOUR-PROJECT-REF.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+## 启动开发服务器
+
+```bash
+pnpm dev
+```
+
+打开 `http://localhost:5173`，使用邮箱登录（魔法链接）或 Google/Apple 登录。
+
+## 说明
+- 登录成功后页面会显示当前用户邮箱，并提供 “退出登录” 按钮。
+- OAuth 登录回跳后会自动完成 code 交换并清理 URL 参数。
+- 目前只是登录门卫，后续会把 access_token 传给后端 /api/action 等接口。
