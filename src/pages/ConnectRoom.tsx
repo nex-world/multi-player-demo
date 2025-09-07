@@ -94,7 +94,10 @@ export function ConnectRoom(){
       const items = await idbGetRoom(roomId, 200)
       if (cancelled) return
       if (items.length) {
+        // 只设置本地历史，不叠加
         setMessages(items.map(m => ({ kind: m.kind || 'chat', playerId: m.playerId, name: m.name, color: m.color, text: m.text, t: m.t })))
+      } else {
+        setMessages([])
       }
     }
     loadLocal()
@@ -178,15 +181,16 @@ export function ConnectRoom(){
           }
         }
         if (msg.type === 'history') {
-          // merge server history and persist to idb
-          const hist: ChatItem[] = (msg.messages || []).map((it: any) => ({ roomId, kind: 'chat', playerId: it.playerId, name: it.name, color: it.color, text: it.text, t: it.t }))
+          // 合并并去重历史
+          const hist: ChatMsg[] = (msg.messages || []).map((it: any) => ({ kind: 'chat', playerId: it.playerId, name: it.name, color: it.color, text: it.text, t: it.t }))
           if (hist.length) {
-            idbPutMany(hist).catch(()=>{})
+            idbPutMany(hist.map(h => ({ roomId, ...h }))).catch(()=>{})
             setMessages((m) => {
-              const mapped: ChatMsg[] = hist.map(h => ({ kind: 'chat', playerId: h.playerId, name: h.name, color: h.color, text: h.text, t: h.t }))
-              const merged: ChatMsg[] = [...m, ...mapped]
-              merged.sort((a,b)=>a.t-b.t)
-              return merged.slice(-200)
+              // 用 t+playerId+text 去重
+              const all = [...m, ...hist]
+              const dedup = Array.from(new Map(all.map(x => [`${x.t}-${x.playerId}-${x.text}`, x])).values())
+              dedup.sort((a,b)=>a.t-b.t)
+              return dedup.slice(-200)
             })
           }
         }
@@ -243,11 +247,19 @@ export function ConnectRoom(){
     if (wsRef.current) { try { wsRef.current.close() } catch {}; wsRef.current = null }
     // Stop animation loop
     if (animRef.current) { cancelAnimationFrame(animRef.current); animRef.current = undefined }
-    // Clear room states (keep auth and base url preferences)
+    // Clear refs and states
     targetsRef.current = new Map()
     playersRef.current = new Map()
+    selfIdRef.current = ''
+    keysRef.current = {}
+    mouseRef.current = {x:0,y:0}
     setPlayers(new Map())
     setSelfId('')
+    // 清空 canvas
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d')
+      if (ctx) ctx.clearRect(0,0,canvasRef.current.width,canvasRef.current.height)
+    }
     // Add a local system message
     setMessages((m)=>[...m.slice(-199), { kind:'system', text:'你已离开房间', t: Date.now() }])
   }
@@ -440,7 +452,7 @@ export function ConnectRoom(){
           )}
           <div className="flex gap-2">
             <Input placeholder="room id" value={roomId} onChange={e=>setRoomId(e.target.value)} />
-            <Button onClick={connect} disabled={!baseUrl}>连接</Button>
+            <Button onClick={connect} disabled={!baseUrl || !!wsRef.current}>连接</Button>
             <Button variant="destructive" onClick={leaveRoom}>离开房间</Button>
           </div>
           {/* Self color indicator */}
